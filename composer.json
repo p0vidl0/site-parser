@@ -1,0 +1,18 @@
+{
+    "name": "p0vidl0/site-parser",
+    "description": "Simple site parser.",
+    "keywords": ["links", "php site parser"],
+    "homepage": "http://p0vidl0.info/",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0.0-dev",
+    "minimum-stability": "dev",
+    "require": {
+        "p0vidl0/simple-html-dom": "dev-master", 
+        "hieu-le/wordpress-xmlrpc-client": "*"
+    },
+    "autoload": {
+        "classmap":["SiteParser.php"],
+        "files":["SiteParser.php"]
+    }
+}

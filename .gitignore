@@ -1,0 +1,6 @@
+/vendor/
+/*.list
+/*.html
+/composer.lock
+/index.php
+/nbproject/
