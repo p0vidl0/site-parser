@@ -92,7 +92,7 @@ class SiteParser
         if (count($header))
         {
             $postHeader = $header[0]->innertext;    
-            echo "Article header: '$postHeader'\n";
+            echo "'$postHeader'\n";
             $header[0]->outertext = "";
             $this->html->load($this->html->save());
         } else
