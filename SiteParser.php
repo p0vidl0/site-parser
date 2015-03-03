@@ -148,7 +148,7 @@ class SiteParser
         
         if ($datetime)
         {   
-            echo mb_substr($datetime->innertext,0,10) . "\n";
+            echo mb_substr($datetime->innertext,0,10) . "_";
             return DateTime::createFromFormat('d.m.Y H:i:s', mb_substr($datetime->innertext,0,10) . ' ' . mt_rand(0, 23) . ':' . mt_rand(0, 59) . ':' . mt_rand(0, 59));
         }
         return false;
