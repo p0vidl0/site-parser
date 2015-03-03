@@ -6,7 +6,7 @@
  * and open the template in the editor.
  */
 
-require 'vendor\autoload.php';
+require 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
 
 class SiteParser
 {
