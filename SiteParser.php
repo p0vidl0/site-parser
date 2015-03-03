@@ -208,7 +208,7 @@ class SiteParser
         $this->html->load($this->html->save());
     }
     
-    function convertPostImages($post)
+    function convertPostImages($post,$header = '')
     {
         $imgs = $post->find('img');
         if (count($imgs))
@@ -231,7 +231,8 @@ class SiteParser
                 $imageName = substr($url,  strrpos($url, '/') + 1); 
                 $res = $this->wpClient->uploadFile($imageName, 'image/jpeg', file_get_contents($url));
                 $img->outertext = '<img src="' . $res['url'] . '"'
-                        . ($alt != '' ? " alt=\"$alt\"":'')
+                        . "class=\" aligncenter\""
+                        . ($alt != '' ? " alt=\"$alt\"": $header)
                         . ($width != '' ? " width=\"$width\"" : '')
                         . ($height != '' ? " height=\"$height\"" : '')
                    . '>';
@@ -280,10 +281,10 @@ class SiteParser
         return $content;
     }
     
-    function getPostContent()
+    function getPostContent($header = '')
     {        
         $entry = $this->html->find($this->params['postContent'],0);
-        $entry = $this->convertPostImages($entry);       
+        $entry = $this->convertPostImages($entry,$header);       
         $entry = $this->convertHrefs($entry);
         foreach ($entry->find('p[style=text-align: center;]') as $r)
         {
@@ -319,14 +320,14 @@ class SiteParser
         $this->html = file_get_html($donorPostURL);        
         $post['datetime'] = $this->getDateTime();
         $dt = $post['datetime'];
-        if ($dt)
+        if ($dt && $this->params['changeSystemTime'])
         {
             $this->changeSystemTime($dt);            
         }
         $post['comments'] = $this->getComments();
         $post['postHeader'] = $this->getPostHeader();
 //        $this->preDeleteBlocks();
-        $post['postContent'] = $this->getPostContent();
+        $post['postContent'] = $this->getPostContent($post['postHeader']);
         $post['metaDescription'] = $this->getMetaDescription();
         $post['tags'] = $this->getTags();
         $post['category'] = $this->getCategory();
@@ -437,8 +438,7 @@ class SiteParser
     
     function changeSystemTime($datetime)
     {
-//        var_dump($datetime);
-//        $command = 'date +%Y%m%d -s' . $datetime->format('Ymd');
-//        shell_exec($command);
+        $command = 'date +%Y%m%d -s' . $datetime->format('Ymd');
+        shell_exec($command);
     }
 }
