@@ -427,7 +427,7 @@ class SiteParser
     function batchRePost()
     {
         $urls = explode("\n", file_get_contents($this->params['list']));
-        $i = 0;
+        $i = 1;
         
         foreach($urls as $url)
         {
