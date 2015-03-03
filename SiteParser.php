@@ -334,10 +334,10 @@ class SiteParser
     function wpClientInit($anonymous=false)
     {       
         $endpoint = $this->params['recipientUrl'] . "xmlrpc.php";
-        $wpClient = new \HieuLe\WordpressXmlrpcClient\WordpressClient('','','','');
+        $wpClient = new \HieuLe\WordpressXmlrpcClient\WordpressClient(null,null,null,null);
         if ($anonymous)
         {
-            $wpClient->setCredentials($endpoint,'','');
+            $wpClient->setCredentials($endpoint,null,null);
         } else
         {
             $wpClient->setCredentials($endpoint, $this->params['wpLogin'], $this->params['wpPassword']);
