@@ -356,7 +356,7 @@ class SiteParser
             $this->wpClient = $this->wpClientInit();
         }
         $newPostId = $this->wpClient->newPost($post['postHeader'], $post['postContent'],[
-            'post_date' => DateTime::createFromFormat('d.m.Y H:i:s', '20.02.2013 12:21:00'),
+            'post_date' => $post['datetime'],
             'comment_status' => 'open',
             'terms_names'=> [
                 'post_tag' => $post['tags'],
