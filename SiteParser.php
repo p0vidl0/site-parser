@@ -14,22 +14,11 @@ class SiteParser
     private $wpClient;
     
     private $params = [
-        'postDeleteBlocks' => [
-            'div.google_2',
-            'div.prev_next_links',
-            'script',
-            '#hd_cm',
-            'div.tabla',
-            'span.mh3',
-            'form.formsp'
-        ],
         'moreTagPosition' => 2,
     ];
     
     function __construct($params) {
         $this->params = array_merge_recursive($this->params,$params);
-//        var_dump($this->params);
-//        die();
     }
     
     function putNewPosts()
@@ -37,12 +26,6 @@ class SiteParser
         $startTime = time();
 
         $urls = explode("\n", file_get_contents($this->params['list']));
-//        $i = 0;
-//        foreach($urls as $url)
-//        {
-//            echo $i++ .": $url\n";
-//            getDonorPost($url);
-//        }
         echo $urls[0] . "\n";
         $this->getPost($urls[0]);
 
@@ -53,10 +36,10 @@ class SiteParser
         echo "time used: " . $timeUsed . " sec.\n";
     }
     
-    function rusStr2Time($strDate,$dateTime)
+    function rusStr2Date($strDate,$dateTime)
     {
         $arr = explode(' ', $strDate);
-        switch (mb_substr($arr[1],0,3)) {
+        switch (mb_strtolower(mb_substr($arr[1],0,3))) {
             case 'янв':
                 $month = 1;
                 break;
@@ -70,6 +53,7 @@ class SiteParser
                 $month = 4;
                 break;
             case 'мая':
+            case 'май':
                 $month = 5;
                 break;
             case 'июн':
@@ -98,13 +82,14 @@ class SiteParser
         }
         $dateTime->setDate($arr[2], $month, $arr[0]);
         $dateTime->setTime(mt_rand(0, 23), mt_rand(0, 59), mt_rand(0, 59));
+        echo $strDate . " : " .$dateTime->format("d.m.Y") . "\n";
         return $dateTime;
     }
     
     function getPostHeader()
     {
         $postHeader = '';
-        $header = $this->html->find('article.content h1');
+        $header = $this->html->find($this->params['header']);
         if (count($header))
         {
             $postHeader = $header[0]->innertext;    
@@ -120,75 +105,103 @@ class SiteParser
     
     function getPostDate()
     {
-        $publicDate = $header->next_sibling()->find('p',0);
-        date_default_timezone_set("Europe/Moscow");
-        $postDate = new DateTime();
-        $this->rusStr2Time($publicDate->innertext,$postDate);
-        return $postDate;
+        if (isset($this->params['postDate']))
+        {            
+            if (isset($this->params['postDate']['function']))
+            {
+                $postDate = eval($this->params['postDate']['function']);
+            }
+            return $postDate;
+        }
+        return false;
     }
     
     function getTags()
     {
-        $ems = $this->html->find('article.content em');
-        $emsCount = count($ems);
-        if ($emsCount > 1)
-        {
-            $em = $ems[$emsCount-1];
-
-            $tagsContainer = $em->find('a');
-            if (count($tagsContainer))
-            {   
-                foreach ($tagsContainer as $tagContainer)
-                {
-                    array_push($postTags,$tagContainer->innertext);
-                }
+        $postTags = [];
+        $tags = $this->html->find($this->params['tags']);
+        
+        if (count($tags))
+        {   
+            foreach ($tags as $tag)
+            {
+                array_push($postTags,$tag->innertext);
             }
+            return $postTags;
         }
-        return $postTags;
+        return false;
+    }
+    
+    function getCategory()
+    {
+        $category = $this->html->find($this->params['category'],0);
+        
+        if ($category)
+        {   
+            return $category->innertext;
+        }
+        return false;
+    }
+    
+    function getDatetime()
+    {
+        $datetime = $this->html->find($this->params['datetime'],0);
+        
+        if ($datetime)
+        {   
+            return DateTime::createFromFormat('d.m.Y H:i:s', mb_substr($datetime->innertext,0,10) . ' ' . mt_rand(0, 23) . ':' . mt_rand(0, 59) . ':' . mt_rand(0, 59));
+        }
+        return false;
     }
     
     function getComments()
     {
         $comments = [];
-        $cmnts = $this->html->find('div.tabla');
+        $cmnts = $this->html->find($this->params['comments']['selector']);
         if (count($cmnts))
         {
-            for ($i = 0; $i < count($cmnts); $i++)
+            foreach ($cmnts as $cmnt)
             {
-                $comments[$i]['author'] = $cmnts[$i]->find('div.subjblg',0)->plaintext;
-                $comments[$i]['content'] = $cmnts[$i]->find('div.comtblg',0)->innertext;
+                $comment = [];
+                $comment['author'] = $cmnt->find($this->params['comments']['author']['selector'],$this->params['comments']['author']['position'])->innertext;
                 
-                date_default_timezone_set("Europe/Moscow");
-                $comments[$i]['datetime'] = DateTime::createFromFormat('d.m.Y H:i:s', mb_substr($cmnts[$i]->find('div.fftimeblg',0)->innertext,13));
-//                echo "Comment #$i: by '" . $comments[$i]['author'] . "' '" . $comments[$i]['datetime'] ."\n\n";
-                $cmntsLevel2 = $cmnts[$i]->find('div.tablardisplay div.commain');
-//                echo count($cmntsLevel2) . "\n";
-                if (count($cmntsLevel2))
-                {
-                    for ($j = 0; $j < count($cmntsLevel2);$j++)
+                $datetime = $cmnt->find('p.commenticon',0)->innertext;
+                $datetime = mb_substr($datetime,mb_strrpos($datetime,'</strong>')+10);
+                $date = mb_substr($datetime,0,  mb_strpos($datetime,','));               
+                $comment['datetime'] = new DateTime();
+                $comment['datetime'] = $this->rusStr2Date($date, $comment['datetime']);
+                $comment['datetime']->setTime(mb_substr($datetime,-5,2), mb_substr($datetime,-2,2), mt_rand(0, 59)); 
+                $ps = $cmnt->find('p');
+                if (count($ps > 1))
+                {      
+                    $comment['content'] = '';
+                    array_shift($ps);
+                    
+                    foreach ($ps as $p)
                     {
-                        $comments[$i]['subComments'][$j]['author'] = $cmntsLevel2[$j]->find('div.subjblg',0)->plaintext;
-                        $comments[$i]['subComments'][$j]['content'] = $cmntsLevel2[$j]->find('div.comtblg',0)->innertext;
-                        $comments[$i]['subComments'][$j]['datetime'] = DateTime::createFromFormat('d.m.Y H:i:s', mb_substr($cmntsLevel2[$j]->find('div.fftimeblg',0)->innertext,13));
-//                        echo "---Sub comment #$j: by '" . $comments[$i]['subComments'][$j]['author'] . "' '" . $comments[$i]['subComments'][$j]['content'] ."\n\n";
+                        $comment['content'] .= $p->outertext;
                     }
-                }
+                    array_push($comments,$comment);
+                }                
             }
-//            die();
+            return $comments;
         }
-        return $comments;
+        return false;
     }
     
     function preDeleteBlocks()
     {
-        foreach($this->params['postDeleteBlocks'] as $delBlock)
+        if (isset($this->params['postDeleteBlocks']))
         {
-            $del = $this->html->find("article.content",0)->find($delBlock);
-            if (count($del))
+            foreach($this->params['postDeleteBlocks'] as $delBlock)
             {
-                foreach ($del as $d)
+                $del = $this->html->find("article.content",0)->find($delBlock);
+                if (count($del))
                 {
-                    $d->outertext = "";
+                    foreach ($del as $d)
+                    {
+                        $d->outertext = "";
+                    }
                 }
             }
         }
@@ -212,20 +225,16 @@ class SiteParser
                 {
                     
                     $url = $this->params['donorUrl'] . substr($url,1);
-//                    $url = str_replace('//','/',$url);
                 }
                 $width = $img->width;
                 $height = $img->height;
                 $imageName = substr($url,  strrpos($url, '/') + 1); 
-//                echo "Try save '$url' to '$imageName'.\n";
                 $res = $this->wpClient->uploadFile($imageName, 'image/jpeg', file_get_contents($url));
                 $img->outertext = '<img src="' . $res['url'] . '"'
                         . ($alt != '' ? " alt=\"$alt\"":'')
-//                       . is_array($postTags) && count($postTags) ? ' title="' . implode(' ',$postTags) . '"' : '' 
                         . ($width != '' ? " width=\"$width\"" : '')
                         . ($height != '' ? " height=\"$height\"" : '')
                    . '>';
-//                echo $img->outertext . "\n";
             }
         }
         return $post;
@@ -247,7 +256,6 @@ class SiteParser
                 {
                     
                     $objectData = $this->params['donorUrl'] . substr($objectData,1);
-//                    $url = str_replace('//','/',$url);
                 }
                 $objectFileName = substr($objectData,  strrpos($objectData, '/') + 1); 
                 $res = $this->wpClient->uploadFile($objectFileName, 'image/jpeg', file_get_contents($objectData));      
@@ -274,35 +282,51 @@ class SiteParser
     
     function getPostContent()
     {        
-        $entry = $this->html->find('article.content',0);
-//        $postContent = mb_substr($entry->innertext,0,mb_strpos($entry->innertext,'<!-- tags begin -->'));
+        $entry = $this->html->find($this->params['postContent'],0);
         $entry = $this->convertPostImages($entry);       
         $entry = $this->convertHrefs($entry);
-        $entry = $this->convertObjects($entry);
+        foreach ($entry->find('p[style=text-align: center;]') as $r)
+        {
+            $r->outertext = '';
+        }
         $paragraphs = $entry->find('p');
         if (count($paragraphs) > $this->params['moreTagPosition'])
         {
             $paragraphs[$this->params['moreTagPosition'] - 1]->outertext .= "<!--more-->";
         }
-        return $entry->innertext;
+        $content = $entry->innertext;
+        if (isset($this->params['postCutAfter']))
+        {
+            $content = mb_substr($content,0,mb_strpos($content,  $this->params['postCutAfter']));
+        }
+        return $content;
     }
     
     function getMetaDescription()
     {
-        $entry = $this->html->find('article.content',0);
-        $metaDescription = mb_substr($entry->plaintext,0,156);
+        $metaDescription = $this->html->find('meta[name=description]',0);
+        if ($metaDescription)
+        {
+            return $metaDescription->content;
+        }
+        $entry = $this->html->find($this->params['postContent'],0);
+        $metaDescription = trim(mb_substr($entry->plaintext,0,156));
         return $metaDescription;
     }
 
     function getPost($donorPostURL)
-    {
-        $this->html = file_get_html($donorPostURL);
-        
+    { 
+        $this->html = file_get_html($donorPostURL);        
+        $post['datetime'] = $this->getDateTime();
+        $dt = $post['datetime'];
+        $this->changeSystemTime($dt);
         $post['comments'] = $this->getComments();
         $post['postHeader'] = $this->getPostHeader();
-        $this->preDeleteBlocks();
+//        $this->preDeleteBlocks();
         $post['postContent'] = $this->getPostContent();
         $post['metaDescription'] = $this->getMetaDescription();
+        $post['tags'] = $this->getTags();
+        $post['category'] = $this->getCategory();
         
         return $post;        
     }
@@ -323,10 +347,6 @@ class SiteParser
     
     function putPost($post)
     {
-        
-        date_default_timezone_set("Europe/Moscow");
-//        $fileName = date("Y-m-d-H-i-s") . "-res.html";
-//        file_put_contents($fileName,$postContent);
         if (!isset($this->wpClient))
         {
             $this->wpClient = $this->wpClientInit();
@@ -335,9 +355,9 @@ class SiteParser
             'post_date' => DateTime::createFromFormat('d.m.Y H:i:s', '20.02.2013 12:21:00'),
             'comment_status' => 'open',
             'terms_names'=> [
-//                'post_tag' => $postTags,
+                'post_tag' => $post['tags'],
                 'category' => [
-                    'Уроки ActionScript 3.0',
+                    $post['category'],
                 ],
             ],
             'custom_fields' => [
@@ -345,10 +365,10 @@ class SiteParser
                     'key' => '_yoast_wpseo_metadesc',
                     'value' => $post['metaDescription'],
                 ],
-//                [
-//                    'key' => '_yoast_wpseo_focuskw',
-//                    'value' => implode(" ",$postTags),
-//                ]
+                [
+                    'key' => '_yoast_wpseo_focuskw',
+                    'value' => is_array($post['tags'])?implode(" ",$post['tags']):$post['postHeader'],
+                ]
             ]
         ]);
         if ($newPostId)
@@ -369,26 +389,29 @@ class SiteParser
                             'date_created_gmt' => $comment['datetime'],
                         ]);
                     }
-                    if (isset($comment['subComments']))
-                    {
-                        foreach ($comment['subComments'] as $subComment)
-                        {
-                            $newComment = $wpCommentsClient->newComment($newPostId,[
-                                'comment_parent' => $newComment,
-                                'content' => $subComment['content'],
-                                'author' => $subComment['author'],
-                            ]);                            
-                            if ($newComment)
-                            {
-                                $this->wpClient->editComment($newComment, [
-                                    'date_created_gmt' => $comment['datetime'],
-                                ]);
-                            }
-                        }
-                    }
+//                    if (isset($comment['subComments']))
+//                    {
+//                        foreach ($comment['subComments'] as $subComment)
+//                        {
+//                            $newComment = $wpCommentsClient->newComment($newPostId,[
+//                                'comment_parent' => $newComment,
+//                                'content' => $subComment['content'],
+//                                'author' => $subComment['author'],
+//                            ]);                            
+//                            if ($newComment)
+//                            {
+//                                $this->wpClient->editComment($newComment, [
+//                                    'date_created_gmt' => $comment['datetime'],
+//                                ]);
+//                            }
+//                        }
+//                    }
                 }
-            }
+            }            
+            $newPost = $this->wpClient->getPost($newPostId);
+            return $newPost['link'];
         }
+        return false;
     }
     
     function rePost($donorPostURL)
@@ -407,5 +430,12 @@ class SiteParser
             echo $i++ ."_";
             $this->rePost($url);           
         }
+    }
+    
+    function changeSystemTime($datetime)
+    {
+//        var_dump($datetime);
+//        $command = 'date +%Y%m%d -s' . $datetime->format('Ymd');
+//        shell_exec($command);
     }
 }
