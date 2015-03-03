@@ -373,7 +373,7 @@ class SiteParser
         if ($newPostId)
         {
             $this->wpClient->editPost($newPostId,[]);
-            if (count($post['comments']))
+            if (is_array($post['comments']) && count($post['comments']))
             {
                 $wpCommentsClient = $this->wpClientInit(true);
                 foreach ($post['comments'] as $comment)
