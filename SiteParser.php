@@ -82,7 +82,6 @@ class SiteParser
         }
         $dateTime->setDate($arr[2], $month, $arr[0]);
         $dateTime->setTime(mt_rand(0, 23), mt_rand(0, 59), mt_rand(0, 59));
-        echo $strDate . " : " .$dateTime->format("d.m.Y") . "\n";
         return $dateTime;
     }
     
