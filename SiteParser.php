@@ -148,6 +148,7 @@ class SiteParser
         
         if ($datetime)
         {   
+            echo mb_substr($datetime->innertext,0,10) . "\n";
             return DateTime::createFromFormat('d.m.Y H:i:s', mb_substr($datetime->innertext,0,10) . ' ' . mt_rand(0, 23) . ':' . mt_rand(0, 59) . ':' . mt_rand(0, 59));
         }
         return false;
@@ -318,7 +319,10 @@ class SiteParser
         $this->html = file_get_html($donorPostURL);        
         $post['datetime'] = $this->getDateTime();
         $dt = $post['datetime'];
-        $this->changeSystemTime($dt);
+        if ($dt)
+        {
+            $this->changeSystemTime($dt);            
+        }
         $post['comments'] = $this->getComments();
         $post['postHeader'] = $this->getPostHeader();
 //        $this->preDeleteBlocks();
