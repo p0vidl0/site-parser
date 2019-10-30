@@ -394,23 +394,6 @@ class SiteParser
                             'date_created_gmt' => $comment['datetime'],
                         ]);
                     }
-//                    if (isset($comment['subComments']))
-//                    {
-//                        foreach ($comment['subComments'] as $subComment)
-//                        {
-//                            $newComment = $wpCommentsClient->newComment($newPostId,[
-//                                'comment_parent' => $newComment,
-//                                'content' => $subComment['content'],
-//                                'author' => $subComment['author'],
-//                            ]);                            
-//                            if ($newComment)
-//                            {
-//                                $this->wpClient->editComment($newComment, [
-//                                    'date_created_gmt' => $comment['datetime'],
-//                                ]);
-//                            }
-//                        }
-//                    }
                 }
             }            
             $newPost = $this->wpClient->getPost($newPostId);
